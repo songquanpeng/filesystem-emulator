@@ -1,2 +1,6 @@
 .idea
+.vs
+.vscode
+out
+build
 cmake-build-debug
