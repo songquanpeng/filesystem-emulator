@@ -4,6 +4,8 @@
 #include <fstream>
 #include <memory.h>
 #include <ctime>
+#include <cstring>
+#include <iomanip>
 
 using namespace std;
 
@@ -20,7 +22,7 @@ Filesystem::Filesystem() {
 }
 
 void Filesystem::initialize() {
-    int dumpy;
+    unsigned int dumpy;
     createDir(dumpy);
 }
 
@@ -64,7 +66,7 @@ void Filesystem::summary() {
          << "Inode size: " << INODE_SIZE << " B" << endl;
 }
 
-bool Filesystem::createFile(const string &path) {
+bool Filesystem::createFile(const string &path, int size) {
 
     return true;
 }
@@ -75,13 +77,28 @@ bool Filesystem::deleteFile(const string &path) {
 
 bool Filesystem::createDir(const string &path) {
     vector<string> names = splitPath(path);
-    int parentDirInodeNumber = inodeNumber(names[0]);
+    unsigned int parentDirInodeNumber = inodeNumber(names[0]);
     string dirName = names[1];
-    // TODO
+    unsigned int inodeNum;
+    if (createDir(inodeNum)) {
+        Inode *inode = readInode(parentDirInodeNumber);
+        unsigned int &blockAddress = inode->address[0];
+        if (blockAddress == 0 && !assignBlock(blockAddress)) {
+            cerr << "fail to assign block" << endl;
+        }
+        char *buffer = readBlock(blockAddress);
+        auto *dirItem = new DirItem;
+        dirItem->inodeNum = inodeNum;
+        strncpy(dirItem->name, dirName.c_str(), MAX_FILENAME_LENGTH);
+        memcpy(buffer + inode->size, dirItem, DIR_ITEM_SIZE);
+        inode->size += DIR_ITEM_SIZE;
+        delete dirItem;
+        return true;
+    }
     return false;
 }
 
-bool Filesystem::createDir(int &inodeNum) {
+bool Filesystem::createDir(unsigned int &inodeNum) {
     if (assignInode(inodeNum)) {
         Inode inode = createInode(true);
         writeInode(inodeNum, &inode);
@@ -92,7 +109,7 @@ bool Filesystem::createDir(int &inodeNum) {
     }
 }
 
-bool Filesystem::createFile(int &inodeNum) {
+bool Filesystem::createFile(unsigned int &inodeNum) {
     if (assignInode(inodeNum)) {
         Inode inode = createInode(false);
         // TODO: init file
@@ -116,8 +133,19 @@ bool Filesystem::copyFile(const string &sourceFilePath, const string &targetFile
     return false;
 }
 
-bool Filesystem::list(const string &path) {
-    return false;
+bool Filesystem::list(string &path) {
+    if (path.empty()) path = workingDir;
+    unsigned dirInodeNumber = inodeNumber(path);
+    Inode *parent = readInode(dirInodeNumber);
+    unsigned int &blockAddress = parent->address[0];
+    char *buffer = readBlock(blockAddress);
+    cout << std::left << setw(5) << "INode" << " Name " << endl;
+    DirItem *dirItem;
+    for (int i = 0; i * DIR_ITEM_SIZE < parent->size; ++i) {
+        dirItem = (DirItem *) (buffer + i * DIR_ITEM_SIZE);
+        cout << std::left << setw(5) << dirItem->inodeNum << " " << dirItem->name << endl;
+    }
+    return true;
 }
 
 bool Filesystem::printFile(const string &path) {
@@ -128,28 +156,31 @@ string Filesystem::getWorkingDir() {
     return workingDir;
 }
 
-int Filesystem::inodeNumber(const string &path) {
+unsigned int Filesystem::inodeNumber(const string &path) {
     auto names = parsePath(path);
-    int targetInodeNumber = 0;
+    unsigned int targetInodeNumber = 0;
     for (const string &name : names) {
         targetInodeNumber = inodeNumber(name, targetInodeNumber);
     }
     return targetInodeNumber;
 }
 
-int Filesystem::inodeNumber(const string &name, int dirInodeNumber) {
+unsigned int Filesystem::inodeNumber(const string &name, unsigned int dirInodeNumber) {
     Inode *parent = readInode(dirInodeNumber);
-    // TODO
+    unsigned int &blockAddress = parent->address[0];
+    char *buffer = readBlock(blockAddress);
+    DirItem *dirItem;
+    for (int i = 0; i * DIR_ITEM_SIZE < parent->size; ++i) {
+        dirItem = (DirItem *) (buffer + i * DIR_ITEM_SIZE);
+        string temp(dirItem->name);
+        if (temp == name) {
+            return dirItem->inodeNum;
+        }
+    }
     return 0;
 }
 
-void Filesystem::writeInode(int inodeNumber, Inode *inode) {
-    char *src = (char *) inode;
-    char *dis = memory + inodeNumber * INODE_SIZE;
-    memcpy(dis, src, INODE_SIZE);
-}
-
-bool Filesystem::assignInode(int &inodeNum) {
+bool Filesystem::assignInode(unsigned int &inodeNum) {
     Inode *temp;
     for (int i = 0; i < INODE_NUM; ++i) {
         temp = readInode(i);
@@ -168,20 +199,28 @@ Inode Filesystem::createInode(bool isDir) {
     return inode;
 }
 
-Inode *Filesystem::readInode(int inodeNumber) {
+void Filesystem::writeInode(unsigned int inodeNumber, Inode *inode) {
+    char *src = (char *) inode;
+    char *dis = memory + inodeNumber * INODE_SIZE;
+    memcpy(dis, src, INODE_SIZE);
+}
+
+Inode *Filesystem::readInode(unsigned int inodeNumber) {
     return (Inode *) (memory + inodeNumber * INODE_SIZE);
 }
 
-void Filesystem::writeBlock(int address, char *buffer) {
-
+void Filesystem::writeBlock(unsigned int address, char *buffer) {
+    char *dis = memory + BLOCK_START_POS + address * BLOCK_SIZE;
+    memcpy(dis, buffer, BLOCK_SIZE);
 }
 
-void Filesystem::readBlock(int address, char *buffer) {
-
+char *Filesystem::readBlock(unsigned int address) {
+    return memory + BLOCK_START_POS + address * BLOCK_SIZE;
 }
 
-bool Filesystem::assignBlock(int &blockNum) {
-    for (int i = 0; i < BITMAP_SIZE; ++i) {
+bool Filesystem::assignBlock(unsigned int &blockNum) {
+    // We need 0 remained.
+    for (int i = 1; i < BITMAP_SIZE; ++i) {
         if (!(*bitmap)[i]) {
             blockNum = i;
             return true;
@@ -226,12 +265,23 @@ vector<string> Filesystem::splitPath(const string &path) {
 }
 
 bool Filesystem::showFileStatus(const string &path) {
-    int inodeNum = inodeNumber(path);
+    unsigned int inodeNum = inodeNumber(path);
+    if (inodeNum == 0 && path != "/") {
+        cout << "stat: cannot stat '" << path << "': No such file or directory" << endl;
+        return false;
+    }
     Inode *inode = readInode(inodeNum);
     cout << "File: " << path << endl
          << "Inode: " << inodeNum << endl
          << "Size: " << inode->size << endl
          << "Type: " << (inode->type == '1' ? "directory" : "regular file") << endl
-         << "Create time: " << inode->createTime << endl;
+         << "Create time: " << inode->createTime << endl
+         << "Block address: ";
+    // don't forget the indirect block addresses
+    for (int i = 0; i < 11; ++i) {
+        if (i > 0 && inode->address[i] == 0) break;
+        cout << inode->address[i] << " ";
+    }
+    cout << endl;
     return true;
 }
