@@ -9,7 +9,7 @@ int main() {
     cout << introduction() << endl << endl;
     Filesystem fs;
     while (true) {
-        cout << fs.prompt();
+        cout << prompt(fs.getWorkingDir());
         string input;
         getline(cin, input);
         if (input.empty()) continue;

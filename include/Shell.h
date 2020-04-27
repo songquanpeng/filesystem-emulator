@@ -27,6 +27,10 @@ string help() {
            "Use `man -k' or `info' to find out more about commands not in this list.";
 }
 
+string prompt(const string& workingDir) {
+    return "ubuntu@VM-0-16-ubuntu:" + workingDir + "$ ";
+}
+
 bool execute(Filesystem fs, const string &command) {
     istringstream iss(command);
     vector<string> tokens;
@@ -54,7 +58,9 @@ bool execute(Filesystem fs, const string &command) {
     } else if (tokens[0] == "df" || tokens[0] == "sum") {
         fs.summary();
     } else if (tokens[0] == "cat") {
-        fs.printFile(tokens[0]);
+        fs.printFile(tokens[1]);
+    } else if (tokens[0] == "stat") {
+        fs.showFileStatus(tokens[1]);
     } else if (tokens[0] == "help") {
         cout << help() <<endl;
     } else if (tokens[0] == "exit") {

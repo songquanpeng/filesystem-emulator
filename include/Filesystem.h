@@ -2,9 +2,12 @@
 #define FILE_SYSTEM_EMULATOR_FILESYSTEM_H
 
 #include <string>
+#include <vector>
+#include <bitset>
 
 using std::string;
-
+using std::vector;
+using std::bitset;
 
 struct Inode {
     char type;
@@ -13,38 +16,52 @@ struct Inode {
     unsigned int address[11];
 };
 
+const int FS_SIZE = 16 * 1024 * 1024; // 16777216
+const int INODE_NUM = 4 * 1024;
+const int INODE_SIZE = sizeof(Inode);
+const int BITMAP_SIZE = FS_SIZE / 1024;
+const int BLOCK_SIZE = 1024;
+const int BLOCK_NUM = (FS_SIZE - INODE_NUM * INODE_SIZE - BITMAP_SIZE / 8) / BLOCK_SIZE;
+
+
 class Filesystem {
 public:
-    static const int FS_SIZE;
-    static const char *FILE_NAME;
-    static const int INODE_SIZE;
     Filesystem();
-    string prompt();
     void summary();
     bool load();
     bool save();
     bool exit();
-    bool createFile(string filename);
-    bool deleteFile(string filename);
-    bool createDir(string dirname);
-    bool deleteDir(string dirname);
-    bool changeWorkingDir(string dirname);
+    bool createFile(const string& path);
+    bool deleteFile(const string& path);
+    bool createDir(const string& path);
+    bool deleteDir(const string& path);
+    bool changeWorkingDir(const string& path);
     string getWorkingDir();
-    bool copyFile(string sourceFilename, string targetFilename);
-    bool list(string dirname);
-    bool printFile(string filename);
+    bool copyFile(const string& sourceFilePath, const string& targetFilePath);
+    bool list(const string& path);
+    bool showFileStatus(const string& path);
+    bool printFile(const string& path);
+
 private:
     string workingDir;
+    bitset<BITMAP_SIZE> *bitmap;
+    string fsFilename;
     char *memory{};
     void initialize();
-    int inodeNumber(string filename);
-    int inodeNumber(string filename, int dirInodeNumber); // Search target file in given dir.
-    int getInode(bool *success);
+    int inodeNumber(const string& path);
+    // Search target file or folder in given dir.
+    int inodeNumber(const string& name, int dirInodeNumber);
+    bool assignInode(int &inodeNum);
     void writeInode(int inodeNumber, Inode* inode);
     Inode* readInode(int inodeNumber);
-    Inode createInode(bool isDir = false);
+    static Inode createInode(bool isDir = false);
     void writeBlock(int address, char* buffer);
     void readBlock(int address, char* buffer);
+    bool assignBlock(int &blockNum);
+    bool createDir(int &inodeNum);
+    bool createFile(int &inodeNum);
+    static vector<string> parsePath(const string& path);
+    static vector<string> splitPath(const string& path);
 };
 
 #endif //FILE_SYSTEM_EMULATOR_FILESYSTEM_H
