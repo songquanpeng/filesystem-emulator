@@ -4,13 +4,20 @@
 #include <string>
 
 using std::string;
-using std::fstream;
 
+
+struct Inode {
+    char type;
+    unsigned int size;
+    time_t createTime;
+    unsigned int address[11];
+};
 
 class Filesystem {
 public:
     static const int FS_SIZE;
     static const char *FILE_NAME;
+    static const int INODE_SIZE;
     Filesystem();
     string prompt();
     void summary();
@@ -29,6 +36,15 @@ public:
 private:
     string workingDir;
     char *memory{};
+    void initialize();
+    int inodeNumber(string filename);
+    int inodeNumber(string filename, int dirInodeNumber); // Search target file in given dir.
+    int getInode(bool *success);
+    void writeInode(int inodeNumber, Inode* inode);
+    Inode* readInode(int inodeNumber);
+    Inode createInode(bool isDir = false);
+    void writeBlock(int address, char* buffer);
+    void readBlock(int address, char* buffer);
 };
 
 #endif //FILE_SYSTEM_EMULATOR_FILESYSTEM_H
