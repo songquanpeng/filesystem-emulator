@@ -66,8 +66,12 @@ private:
     void writeBlock(unsigned int address, char* buffer);
     char* readBlock(unsigned int address);
     bool assignBlock(unsigned int &blockNum);
+    bool revokeBlock(unsigned int &blockNum);
     bool createDir(unsigned int &inodeNum);
-    bool createFile(unsigned int &inodeNum);
+    bool createFile(unsigned int &inodeNum, unsigned int size=0);
+    // Revoke inode and free its blocks.
+    bool revokeInode(unsigned int inodeNum);
+    bool exist(const string& path);
     static vector<string> parsePath(const string& path);
     static vector<string> splitPath(const string& path);
 };

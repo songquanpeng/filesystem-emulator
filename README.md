@@ -17,9 +17,12 @@
 
 ## TODO List
 - [x] Implement a basic shell for interact.
-- [ ] Able to create directory.
+- [x] Able to create directory.
 - [ ] Able to create file.
+- [ ] Able to delete directory.
+- [x] Able to delete file.
 - [x] Able to list subdirs and files in target directory.
 - [ ] Able to show file content.
+- [ ] Able to edit file.
 - [x] Able to show directory's attributes.
 - [ ] Support relative path.
