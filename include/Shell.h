@@ -31,7 +31,7 @@ string prompt(const string &workingDir) {
     return "ubuntu@VM-0-16-ubuntu:" + workingDir + "$ ";
 }
 
-bool execute(Filesystem fs, const string &command) {
+bool execute(Filesystem &fs, const string &command) {
     istringstream iss(command);
     vector<string> tokens;
     copy(istream_iterator<string>(iss), istream_iterator<string>(), back_inserter(tokens));

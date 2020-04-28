@@ -191,6 +191,9 @@ bool Filesystem::changeWorkingDir(const string &path) {
         return false;
     }
     workingDir = path;
+    if(workingDir[0] != '/') {
+        workingDir = '/' + workingDir;
+    }
     return true;
 }
 
