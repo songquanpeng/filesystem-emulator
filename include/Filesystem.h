@@ -9,11 +9,13 @@ using std::string;
 using std::vector;
 using std::bitset;
 
+const int DIRECT_ADDRESS_NUM = 10;
+
 struct Inode {
     char type; // '1': dir, '2': regular file
     unsigned int size;
     time_t createTime;
-    unsigned int address[11];
+    unsigned int address[DIRECT_ADDRESS_NUM + 1];
 };
 
 const int MAX_FILENAME_LENGTH = 60;
@@ -35,46 +37,84 @@ const int DIR_ITEM_SIZE = sizeof(DirItem);
 class Filesystem {
 public:
     Filesystem();
+
     void summary();
+
     bool load();
+
     bool save();
+
     bool exit();
-    bool createFile(const string& path, int size=1);
+
+    // The unit of size is byte here.
+    bool createFile(string path, int size = 1);
+
     // Including directory.
-    bool deleteFile(const string& path);
-    bool createDir(const string& path);
-    bool changeWorkingDir(const string& path);
+    bool deleteFile(const string &path);
+
+    bool createDir(const string &path);
+
+    bool changeWorkingDir(const string &path);
+
     string getWorkingDir();
-    bool copyFile(const string& sourceFilePath, const string& targetFilePath);
-    bool list(string& path);
-    bool showFileStatus(const string& path);
-    bool printFile(const string& path);
+
+    bool copyFile(const string &sourceFilePath, const string &targetFilePath);
+
+    bool list(string &path);
+
+    bool showFileStatus(const string &path);
+
+    bool printFile(const string &path);
 
 private:
     string workingDir;
     bitset<BITMAP_SIZE> *bitmap;
     string fsFilename;
     char *memory{};
+
     void initialize();
-    unsigned int inodeNumber(const string& path);
+
+    unsigned int inodeNumber(const string &path);
+
     // Search target file or folder in given dir.
-    unsigned int inodeNumber(const string& name, unsigned int dirInodeNumber);
+    unsigned int inodeNumber(const string &name, unsigned int dirInodeNumber);
+
     bool assignInode(unsigned int &inodeNum);
-    void writeInode(unsigned int inodeNumber, Inode* inode);
-    Inode* readInode(unsigned int inodeNumber);
+
+    void writeInode(unsigned int inodeNumber, Inode *inode);
+
+    Inode *readInode(unsigned int inodeNumber);
+
     static Inode createInode(bool isDir = false);
-    void writeBlock(unsigned int address, char* buffer);
-    char* readBlock(unsigned int address);
+
+    void writeBlock(unsigned int address, char *buffer);
+
+    char *readBlock(unsigned int address);
+
     bool assignBlock(unsigned int &blockNum);
+
     bool revokeBlock(unsigned int &blockNum);
+
     bool createDir(unsigned int &inodeNum);
-    bool createFile(unsigned int &inodeNum, unsigned int size=0);
+
+    bool createFile(unsigned int &inodeNum, unsigned int size = 0);
+
     // Revoke inode and free its blocks.
     bool revokeInode(unsigned int inodeNum);
-    bool exist(const string& path);
-    bool existPath(const string& path);
-    static vector<string> parsePath(const string& path);
-    static vector<string> splitPath(const string& path);
+
+    bool exist(const string &path);
+
+    bool existPath(const string &path);
+
+    static vector<string> parsePath(const string &path);
+
+    static vector<string> splitPath(const string &path);
+
+    string fullPath(const string &path);
+
+    vector<unsigned> blockAddress(Inode *inode);
+
+    bool addDirItem(unsigned parentDirInodeNum, unsigned fileInodeNum, const string& name);
 };
 
 #endif //FILE_SYSTEM_EMULATOR_FILESYSTEM_H

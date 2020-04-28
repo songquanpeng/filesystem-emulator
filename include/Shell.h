@@ -45,7 +45,11 @@ bool execute(Filesystem &fs, const string &command) {
     } else if (tokens[0] == "mkdir" || tokens[0] == "createDir") {
         fs.createDir(tokens[1]);
     } else if (tokens[0] == "touch" || tokens[0] == "createFile") {
-        fs.createFile(tokens[1]);
+        int size = 0;
+        try {
+            size = stoi(tokens[2]);
+        } catch (const exception& e){}
+        fs.createFile(tokens[1], size * 1024);
     } else if (tokens[0] == "ls" || tokens[0] == "dir") {
         fs.list(tokens[1]);
     } else if (tokens[0] == "cd" || tokens[0] == "changeDir") {

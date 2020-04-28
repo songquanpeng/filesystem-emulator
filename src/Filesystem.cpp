@@ -98,11 +98,11 @@ bool Filesystem::deleteFile(const string &path) {
 bool Filesystem::revokeInode(unsigned int inodeNum) {
     // If this inode is a directory, we also need to delete all files that it include.
     Inode *inode = readInode(inodeNum);
+    // TODO: When deleting directory, recursively delete all content in it.
     bool isDir = inode->type == '1';
-    // TODO: don't forget the indirect block addresses
-    for (int i = 0; i < 11; ++i) {
-        if (inode->address[i] == 0) break;
-        revokeBlock(inode->address[i]);
+    auto addresses = blockAddress(inode);
+    for (auto address : addresses) {
+        revokeBlock(address);
     }
     memset(memory + inodeNum * INODE_SIZE, 0, INODE_SIZE);
     return true;
@@ -114,23 +114,11 @@ bool Filesystem::createDir(const string &path) {
         return false;
     }
     vector<string> names = splitPath(path);
-    unsigned int parentDirInodeNumber = inodeNumber(names[0]);
+    unsigned int parentDirInodeNum = inodeNumber(names[0]);
     string dirName = names[1];
     unsigned int inodeNum;
     if (createDir(inodeNum)) {
-        Inode *inode = readInode(parentDirInodeNumber);
-        unsigned int &blockAddress = inode->address[0];
-        if (blockAddress == 0 && !assignBlock(blockAddress)) {
-            cerr << "fail to assign block" << endl;
-        }
-        char *buffer = readBlock(blockAddress);
-        auto *dirItem = new DirItem;
-        dirItem->inodeNum = inodeNum;
-        strncpy(dirItem->name, dirName.c_str(), MAX_FILENAME_LENGTH);
-        memcpy(buffer + inode->size, dirItem, DIR_ITEM_SIZE);
-        inode->size += DIR_ITEM_SIZE;
-        delete dirItem;
-        return true;
+        return addDirItem(parentDirInodeNum, inodeNum, dirName);
     }
     return false;
 }
@@ -140,35 +128,22 @@ bool Filesystem::createDir(unsigned int &inodeNum) {
         Inode inode = createInode(true);
         writeInode(inodeNum, &inode);
         return true;
-    } else {
-        cerr << "No more iNode available." << endl;
-        return false;
     }
+    return false;
 }
 
-bool Filesystem::createFile(const string &path, int size) {
+bool Filesystem::createFile(string path, int size) {
+    path = fullPath(path);
     if (exist(path)) {
         cerr << "touch: cannot create file '" << path << "': File exists" << endl;
         return false;
     }
     vector<string> names = splitPath(path);
-    unsigned int parentDirInodeNumber = inodeNumber(names[0]);
+    unsigned int parentDirInodeNum = inodeNumber(names[0]);
     string fileName = names[1];
     unsigned int inodeNum;
     if (createFile(inodeNum, size)) {
-        Inode *inode = readInode(parentDirInodeNumber);
-        unsigned int &blockAddress = inode->address[0];
-        if (blockAddress == 0 && !assignBlock(blockAddress)) {
-            cerr << "fail to assign block" << endl;
-        }
-        char *buffer = readBlock(blockAddress);
-        auto *dirItem = new DirItem;
-        dirItem->inodeNum = inodeNum;
-        strncpy(dirItem->name, fileName.c_str(), MAX_FILENAME_LENGTH);
-        memcpy(buffer + inode->size, dirItem, DIR_ITEM_SIZE);
-        inode->size += DIR_ITEM_SIZE;
-        delete dirItem;
-        return true;
+        return addDirItem(parentDirInodeNum, inodeNum, fileName);
     }
     return false;
 }
@@ -177,12 +152,25 @@ bool Filesystem::createFile(unsigned int &inodeNum, unsigned int size) {
     if (assignInode(inodeNum)) {
         Inode inode = createInode(false);
         inode.size = size;
+        int blockNum = size / BLOCK_SIZE;
+        if (blockNum * BLOCK_SIZE < size) blockNum++;
+        for (int i = 0; i < min(blockNum, DIRECT_ADDRESS_NUM); ++i) {
+            assignBlock(inode.address[i]);
+        }
+        if (blockNum > DIRECT_ADDRESS_NUM) {
+            assignBlock(inode.address[DIRECT_ADDRESS_NUM]);
+            auto *buffer = new unsigned[blockNum - DIRECT_ADDRESS_NUM];
+            for (int i = 0; i < blockNum - DIRECT_ADDRESS_NUM; ++i) {
+                assignBlock(buffer[i]);
+                unsigned temp = buffer[i];
+            }
+            writeBlock(inode.address[DIRECT_ADDRESS_NUM], reinterpret_cast<char *>(buffer));
+            delete[] buffer;
+        }
         writeInode(inodeNum, &inode);
         return true;
-    } else {
-        cerr << "No more iNode available." << endl;
-        return false;
     }
+    return false;
 }
 
 bool Filesystem::changeWorkingDir(const string &path) {
@@ -191,7 +179,7 @@ bool Filesystem::changeWorkingDir(const string &path) {
         return false;
     }
     workingDir = path;
-    if(workingDir[0] != '/') {
+    if (workingDir[0] != '/') {
         workingDir = '/' + workingDir;
     }
     return true;
@@ -221,7 +209,16 @@ bool Filesystem::copyFile(const string &sourceFilePath, const string &targetFile
 }
 
 bool Filesystem::printFile(const string &path) {
-    return false;
+    unsigned fileInodeNum = inodeNumber(path);
+    Inode *inode = readInode(fileInodeNum);
+    char *buffer = new char[inode->size]; // TODO: cat file
+    auto addresses = blockAddress(inode);
+    for (auto address : addresses) {
+        // buffer
+        char *part = readBlock(address);
+    }
+    delete[] buffer;
+    return true;
 }
 
 unsigned int Filesystem::inodeNumber(const string &path) {
@@ -257,6 +254,7 @@ bool Filesystem::assignInode(unsigned int &inodeNum) {
             return true;
         }
     }
+    cerr << "No more iNode available." << endl;
     return false;
 }
 
@@ -287,13 +285,15 @@ char *Filesystem::readBlock(unsigned int address) {
 }
 
 bool Filesystem::assignBlock(unsigned int &blockNum) {
-    // We need 0 remained.
+    // We need 0 to tell us whether the address is used.
     for (int i = 1; i < BITMAP_SIZE; ++i) {
         if (!(*bitmap)[i]) {
             blockNum = i;
+            (*bitmap)[blockNum] = true;
             return true;
         }
     }
+    cerr << "fail to assign block" << endl;
     return false;
 }
 
@@ -330,11 +330,16 @@ vector<string> Filesystem::splitPath(const string &path) {
         } else {
             if (!temp.empty()) {
                 splitIndex = i;
+                break;
             }
         }
     }
     names.push_back(path.substr(0, splitIndex));
-    names.push_back(path.substr(splitIndex));
+    if (path.substr(splitIndex)[0] == '/') {
+        names.push_back(path.substr(splitIndex + 1));
+    } else {
+        names.push_back(path.substr(splitIndex));
+    }
     return names;
 }
 
@@ -347,14 +352,13 @@ bool Filesystem::showFileStatus(const string &path) {
     Inode *inode = readInode(inodeNum);
     cout << "File: " << path << endl
          << "Inode: " << inodeNum << endl
-         << "Size: " << inode->size << endl
+         << "Size: " << inode->size << " B" << endl
          << "Type: " << (inode->type == '1' ? "directory" : "regular file") << endl
          << "Create time: " << inode->createTime << endl
          << "Block address: ";
-    // don't forget the indirect block addresses
-    for (int i = 0; i < 11; ++i) {
-        if (i > 0 && inode->address[i] == 0) break;
-        cout << inode->address[i] << " ";
+    auto addresses = blockAddress(inode);
+    for (auto address : addresses) {
+        cout << address << " ";
     }
     cout << endl;
     return true;
@@ -369,4 +373,51 @@ bool Filesystem::existPath(const string &path) {
     unsigned int inodeNum = inodeNumber(path);
     Inode *inode = readInode(inodeNum);
     return (inodeNum != 0 || path == "/") && (inode->type == '1');
+}
+
+string Filesystem::fullPath(const string &path) {
+    if (path.empty()) {
+        cerr << "Warning: empty path detected." << endl;
+        return "";
+    }
+    if (path[0] == '/') return path;
+    if (workingDir.front() != '/') workingDir = '/' + workingDir;
+    if (workingDir.back() != '/') workingDir += '/';
+    return workingDir + path;
+}
+
+vector<unsigned> Filesystem::blockAddress(Inode *inode) {
+    vector<unsigned> addresses;
+    int addressNum = inode->size / BLOCK_SIZE;
+    if (addressNum * BLOCK_SIZE < inode->size) addressNum++;
+    for (int i = 0; i < min(addressNum, DIRECT_ADDRESS_NUM); ++i) {
+        addresses.push_back(inode->address[i]);
+    }
+    if (addressNum > DIRECT_ADDRESS_NUM) {
+        //auto *indirectAddresses = reinterpret_cast<unsigned int *>(readBlock(addresses[DIRECT_ADDRESS_NUM]));
+        auto *buffer = new unsigned [addressNum - DIRECT_ADDRESS_NUM];
+        memcpy(buffer, readBlock(inode->address[DIRECT_ADDRESS_NUM]), (addressNum - DIRECT_ADDRESS_NUM) * sizeof(unsigned));
+        for (int i = 0; i + DIRECT_ADDRESS_NUM < addressNum; ++i) {
+            addresses.push_back(buffer[i]);
+        }
+        delete[] buffer;
+    }
+    return addresses;
+}
+
+bool Filesystem::addDirItem(unsigned parentDirInodeNum, unsigned fileInodeNum, const string &name) {
+    Inode *inode = readInode(parentDirInodeNum);
+    unsigned int &blockAddress = inode->address[0];
+    if (blockAddress == 0 && !assignBlock(blockAddress)) {
+        cerr << "fail to assign block" << endl;
+        return false;
+    }
+    char *buffer = readBlock(blockAddress);
+    auto *dirItem = new DirItem;
+    dirItem->inodeNum = fileInodeNum;
+    strncpy(dirItem->name, name.c_str(), MAX_FILENAME_LENGTH);
+    memcpy(buffer + inode->size, dirItem, DIR_ITEM_SIZE);
+    inode->size += DIR_ITEM_SIZE;
+    delete dirItem;
+    return true;
 }
