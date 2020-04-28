@@ -40,9 +40,9 @@ public:
     bool save();
     bool exit();
     bool createFile(const string& path, int size=1);
+    // Including directory.
     bool deleteFile(const string& path);
     bool createDir(const string& path);
-    bool deleteDir(const string& path);
     bool changeWorkingDir(const string& path);
     string getWorkingDir();
     bool copyFile(const string& sourceFilePath, const string& targetFilePath);
@@ -72,6 +72,7 @@ private:
     // Revoke inode and free its blocks.
     bool revokeInode(unsigned int inodeNum);
     bool exist(const string& path);
+    bool existPath(const string& path);
     static vector<string> parsePath(const string& path);
     static vector<string> splitPath(const string& path);
 };

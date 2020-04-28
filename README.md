@@ -26,3 +26,4 @@
 - [ ] Able to edit file.
 - [x] Able to show directory's attributes.
 - [ ] Support relative path.
+- [ ] Able to change working directory.

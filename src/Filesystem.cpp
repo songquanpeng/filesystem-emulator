@@ -17,8 +17,6 @@ Filesystem::Filesystem() {
         exit();
     }
     bitmap = reinterpret_cast<bitset<BITMAP_SIZE> *>(memory + INODE_NUM * INODE_SIZE);
-    // Test area, delete later.
-
 }
 
 void Filesystem::initialize() {
@@ -68,7 +66,7 @@ void Filesystem::summary() {
 
 bool Filesystem::deleteFile(const string &path) {
     if (!exist(path)) {
-        cerr << "rm: cannot remove '" << path << "': No such file" << endl;
+        cerr << "rm: cannot remove '" << path << "': No such file or directory" << endl;
         return false;
     }
     vector<string> names = splitPath(path);
@@ -98,7 +96,9 @@ bool Filesystem::deleteFile(const string &path) {
 }
 
 bool Filesystem::revokeInode(unsigned int inodeNum) {
+    // If this inode is a directory, we also need to delete all files that it include.
     Inode *inode = readInode(inodeNum);
+    bool isDir = inode->type == '1';
     // TODO: don't forget the indirect block addresses
     for (int i = 0; i < 11; ++i) {
         if (inode->address[i] == 0) break;
@@ -106,15 +106,6 @@ bool Filesystem::revokeInode(unsigned int inodeNum) {
     }
     memset(memory + inodeNum * INODE_SIZE, 0, INODE_SIZE);
     return true;
-}
-
-bool Filesystem::deleteDir(const string &path) {
-    vector<string> names = splitPath(path);
-    unsigned int parentDirInodeNumber = inodeNumber(names[0]);
-    string dirName = names[1];
-    unsigned int inodeNum;
-
-    return false;
 }
 
 bool Filesystem::createDir(const string &path) {
@@ -195,11 +186,16 @@ bool Filesystem::createFile(unsigned int &inodeNum, unsigned int size) {
 }
 
 bool Filesystem::changeWorkingDir(const string &path) {
-    return false;
+    if (!existPath(path)) {
+        cerr << "cd: No such directory " << path << endl;
+        return false;
+    }
+    workingDir = path;
+    return true;
 }
 
-bool Filesystem::copyFile(const string &sourceFilePath, const string &targetFilePath) {
-    return false;
+string Filesystem::getWorkingDir() {
+    return workingDir;
 }
 
 bool Filesystem::list(string &path) {
@@ -217,12 +213,12 @@ bool Filesystem::list(string &path) {
     return true;
 }
 
-bool Filesystem::printFile(const string &path) {
+bool Filesystem::copyFile(const string &sourceFilePath, const string &targetFilePath) {
     return false;
 }
 
-string Filesystem::getWorkingDir() {
-    return workingDir;
+bool Filesystem::printFile(const string &path) {
+    return false;
 }
 
 unsigned int Filesystem::inodeNumber(const string &path) {
@@ -366,3 +362,8 @@ bool Filesystem::exist(const string &path) {
     return !(inodeNum == 0 && path != "/");
 }
 
+bool Filesystem::existPath(const string &path) {
+    unsigned int inodeNum = inodeNumber(path);
+    Inode *inode = readInode(inodeNum);
+    return (inodeNum != 0 || path == "/") && (inode->type == '1');
+}

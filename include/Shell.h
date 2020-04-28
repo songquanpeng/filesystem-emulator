@@ -27,7 +27,7 @@ string help() {
            "Use `man -k' or `info' to find out more about commands not in this list.";
 }
 
-string prompt(const string& workingDir) {
+string prompt(const string &workingDir) {
     return "ubuntu@VM-0-16-ubuntu:" + workingDir + "$ ";
 }
 
@@ -39,10 +39,9 @@ bool execute(Filesystem fs, const string &command) {
     tokens.emplace_back("");
     if (tokens[0] == "cp") {
         fs.copyFile(tokens[1], tokens[2]);
-    } else if (tokens[0] == "rm" || tokens[0] == "deleteFile") {
+    } else if (tokens[0] == "rm" || tokens[0] == "deleteFile" ||
+               tokens[0] == "rmdir" || tokens[0] == "deleteDir") {
         fs.deleteFile(tokens[1]);
-    } else if (tokens[0] == "rmdir" || tokens[0] == "deleteDir") {
-        fs.deleteDir(tokens[1]);
     } else if (tokens[0] == "mkdir" || tokens[0] == "createDir") {
         fs.createDir(tokens[1]);
     } else if (tokens[0] == "touch" || tokens[0] == "createFile") {
@@ -62,7 +61,7 @@ bool execute(Filesystem fs, const string &command) {
     } else if (tokens[0] == "stat") {
         fs.showFileStatus(tokens[1]);
     } else if (tokens[0] == "help") {
-        cout << help() <<endl;
+        cout << help() << endl;
     } else if (tokens[0] == "exit") {
         fs.exit();
         return false;
