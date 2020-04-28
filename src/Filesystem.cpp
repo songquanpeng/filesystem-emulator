@@ -57,10 +57,10 @@ bool Filesystem::exit() {
 
 void Filesystem::summary() {
     cout << "Available space: " << (BLOCK_NUM - bitmap->count()) * BLOCK_SIZE / 1024 << " KB" << endl
-         << "Total block number: " << BLOCK_NUM << endl
-         << "Used block: " << bitmap->count() << endl
+         << "Total block number: " << BLOCK_NUM << "  "
+         << "Used block: " << bitmap->count() << "  "
          << "Block size: " << BLOCK_SIZE << " B" << endl
-         << "Inode number: " << INODE_NUM << endl
+         << "Inode number: " << INODE_NUM << "  "
          << "Inode size: " << INODE_SIZE << " B" << endl;
 }
 
@@ -108,7 +108,8 @@ bool Filesystem::revokeInode(unsigned int inodeNum) {
     return true;
 }
 
-bool Filesystem::createDir(const string &path) {
+bool Filesystem::createDir(string path) {
+    path = fullPath(path);
     if (exist(path)) {
         cerr << "mkdir: cannot create directory '" << path << "': File exists" << endl;
         return false;
@@ -133,6 +134,17 @@ bool Filesystem::createDir(unsigned int &inodeNum) {
 }
 
 bool Filesystem::createFile(string path, int size) {
+    if (size < 0) size = 0;
+    unsigned restSpace = (BLOCK_NUM - bitmap->count()) * BLOCK_SIZE;
+    if (size > restSpace) {
+        cerr << "Warning: no enough space" << endl;
+        size = 0;
+    }
+
+    if (size > MAX_FILE_SIZE) {
+        cerr << "Warning: max file size is " << MAX_FILE_SIZE << " Bytes" << endl;
+        size = MAX_FILE_SIZE;
+    }
     path = fullPath(path);
     if (exist(path)) {
         cerr << "touch: cannot create file '" << path << "': File exists" << endl;
@@ -156,13 +168,14 @@ bool Filesystem::createFile(unsigned int &inodeNum, unsigned int size) {
         if (blockNum * BLOCK_SIZE < size) blockNum++;
         for (int i = 0; i < min(blockNum, DIRECT_ADDRESS_NUM); ++i) {
             assignBlock(inode.address[i]);
+            fillBlock(inode.address[i]);
         }
         if (blockNum > DIRECT_ADDRESS_NUM) {
             assignBlock(inode.address[DIRECT_ADDRESS_NUM]);
             auto *buffer = new unsigned[blockNum - DIRECT_ADDRESS_NUM];
             for (int i = 0; i < blockNum - DIRECT_ADDRESS_NUM; ++i) {
                 assignBlock(buffer[i]);
-                unsigned temp = buffer[i];
+                fillBlock(buffer[i]);
             }
             writeBlock(inode.address[DIRECT_ADDRESS_NUM], reinterpret_cast<char *>(buffer));
             delete[] buffer;
@@ -173,7 +186,8 @@ bool Filesystem::createFile(unsigned int &inodeNum, unsigned int size) {
     return false;
 }
 
-bool Filesystem::changeWorkingDir(const string &path) {
+bool Filesystem::changeWorkingDir(string path) {
+    path = fullPath(path);
     if (!existPath(path)) {
         cerr << "cd: No such directory " << path << endl;
         return false;
@@ -213,10 +227,20 @@ bool Filesystem::printFile(const string &path) {
     Inode *inode = readInode(fileInodeNum);
     char *buffer = new char[inode->size]; // TODO: cat file
     auto addresses = blockAddress(inode);
+    char *dstAddress = buffer;
     for (auto address : addresses) {
-        // buffer
-        char *part = readBlock(address);
+        char *srcAddress = readBlock(address);
+        memcpy(dstAddress, srcAddress, BLOCK_SIZE);
+        dstAddress += BLOCK_SIZE;
     }
+    for(int i=0, counter = 0;i<inode->size;++i, ++counter) {
+        cout << buffer[i];
+        if(counter == 63) {
+            counter = 0;
+            cout << endl;
+        }
+    }
+    cout << endl;
     delete[] buffer;
     return true;
 }
@@ -279,6 +303,17 @@ void Filesystem::writeBlock(unsigned int address, char *buffer) {
     char *dis = memory + BLOCK_START_POS + address * BLOCK_SIZE;
     memcpy(dis, buffer, BLOCK_SIZE);
 }
+
+void Filesystem::fillBlock(unsigned int address) {
+    const int num = BLOCK_SIZE / sizeof(char);
+    char buffer[num];
+    srand(time(nullptr));
+    for (int i = 0; i < num; i++) {
+        buffer[i] = 'a' + rand() % 26;
+    }
+    writeBlock(address, buffer);
+}
+
 
 char *Filesystem::readBlock(unsigned int address) {
     return memory + BLOCK_START_POS + address * BLOCK_SIZE;
@@ -395,8 +430,9 @@ vector<unsigned> Filesystem::blockAddress(Inode *inode) {
     }
     if (addressNum > DIRECT_ADDRESS_NUM) {
         //auto *indirectAddresses = reinterpret_cast<unsigned int *>(readBlock(addresses[DIRECT_ADDRESS_NUM]));
-        auto *buffer = new unsigned [addressNum - DIRECT_ADDRESS_NUM];
-        memcpy(buffer, readBlock(inode->address[DIRECT_ADDRESS_NUM]), (addressNum - DIRECT_ADDRESS_NUM) * sizeof(unsigned));
+        auto *buffer = new unsigned[addressNum - DIRECT_ADDRESS_NUM];
+        memcpy(buffer, readBlock(inode->address[DIRECT_ADDRESS_NUM]),
+               (addressNum - DIRECT_ADDRESS_NUM) * sizeof(unsigned));
         for (int i = 0; i + DIRECT_ADDRESS_NUM < addressNum; ++i) {
             addresses.push_back(buffer[i]);
         }

@@ -33,6 +33,7 @@ const int BLOCK_START_POS = INODE_NUM * INODE_SIZE + BITMAP_SIZE;
 const int BLOCK_SIZE = 1024;
 const int BLOCK_NUM = (FS_SIZE - INODE_NUM * INODE_SIZE - BITMAP_SIZE / 8) / BLOCK_SIZE;
 const int DIR_ITEM_SIZE = sizeof(DirItem);
+const int MAX_FILE_SIZE = (DIRECT_ADDRESS_NUM + BLOCK_SIZE / sizeof(unsigned)) * BLOCK_SIZE;
 
 class Filesystem {
 public:
@@ -47,14 +48,14 @@ public:
     bool exit();
 
     // The unit of size is byte here.
-    bool createFile(string path, int size = 1);
+    bool createFile(string path, int size = 0);
 
     // Including directory.
     bool deleteFile(const string &path);
 
-    bool createDir(const string &path);
+    bool createDir(string path);
 
-    bool changeWorkingDir(const string &path);
+    bool changeWorkingDir(string path);
 
     string getWorkingDir();
 
@@ -89,6 +90,8 @@ private:
 
     void writeBlock(unsigned int address, char *buffer);
 
+    void fillBlock(unsigned int address);
+
     char *readBlock(unsigned int address);
 
     bool assignBlock(unsigned int &blockNum);
@@ -114,7 +117,7 @@ private:
 
     vector<unsigned> blockAddress(Inode *inode);
 
-    bool addDirItem(unsigned parentDirInodeNum, unsigned fileInodeNum, const string& name);
+    bool addDirItem(unsigned parentDirInodeNum, unsigned fileInodeNum, const string &name);
 };
 
 #endif //FILE_SYSTEM_EMULATOR_FILESYSTEM_H

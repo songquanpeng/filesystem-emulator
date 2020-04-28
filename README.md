@@ -29,5 +29,8 @@
 - [x] Able to change working directory.
 - [ ] Able to use all direct block addresses and indirect block address.
 - [ ] Support "." and "..".
-- [ ] When creating file, fill it with random string.
+- [x] When creating file, fill it with random string.
 - [ ] When deleting directory, recursively delete all content in it.
+
+## Bugs
+- [ ] When create file with block size 11~16, the program will crash.
