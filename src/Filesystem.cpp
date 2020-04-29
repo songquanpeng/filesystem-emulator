@@ -6,6 +6,7 @@
 #include <ctime>
 #include <cstring>
 #include <iomanip>
+#include <algorithm>
 
 using namespace std;
 
@@ -64,7 +65,8 @@ void Filesystem::summary() {
          << "Inode size: " << INODE_SIZE << " B" << endl;
 }
 
-bool Filesystem::deleteFile(const string &path) {
+bool Filesystem::deleteFile(string path) {
+    path = fullPath(path);
     if (!exist(path)) {
         cerr << "rm: cannot remove '" << path << "': No such file or directory" << endl;
         return false;
@@ -203,9 +205,17 @@ string Filesystem::getWorkingDir() {
     return workingDir;
 }
 
-bool Filesystem::list(string &path) {
-    if (path.empty()) path = workingDir;
+bool Filesystem::list(string path) {
+    if (path.empty()) {
+        path = workingDir;
+    } else {
+        path = fullPath(path);
+    }
     unsigned dirInodeNumber = inodeNumber(path);
+    if (dirInodeNumber == 0 && path != "/") {
+        cerr << "ls: cannot access '" << path << "': No such file or directory" << endl;
+        return false;
+    }
     Inode *parent = readInode(dirInodeNumber);
     unsigned int &blockAddress = parent->address[0];
     char *buffer = readBlock(blockAddress);
@@ -218,11 +228,12 @@ bool Filesystem::list(string &path) {
     return true;
 }
 
-bool Filesystem::copyFile(const string &sourceFilePath, const string &targetFilePath) {
+bool Filesystem::copyFile(string sourceFilePath, string targetFilePath) {
+
     return false;
 }
 
-bool Filesystem::printFile(const string &path) {
+bool Filesystem::printFile(string path) {
     unsigned fileInodeNum = inodeNumber(path);
     Inode *inode = readInode(fileInodeNum);
     char *buffer = new char[inode->size]; // TODO: cat file
@@ -233,9 +244,9 @@ bool Filesystem::printFile(const string &path) {
         memcpy(dstAddress, srcAddress, BLOCK_SIZE);
         dstAddress += BLOCK_SIZE;
     }
-    for(int i=0, counter = 0;i<inode->size;++i, ++counter) {
+    for (int i = 0, counter = 0; i < inode->size; ++i, ++counter) {
         cout << buffer[i];
-        if(counter == 63) {
+        if (counter == 63) {
             counter = 0;
             cout << endl;
         }
@@ -378,7 +389,8 @@ vector<string> Filesystem::splitPath(const string &path) {
     return names;
 }
 
-bool Filesystem::showFileStatus(const string &path) {
+bool Filesystem::showFileStatus(string path) {
+    path = fullPath(path);
     unsigned int inodeNum = inodeNumber(path);
     if (inodeNum == 0 && path != "/") {
         cout << "stat: cannot stat '" << path << "': No such file or directory" << endl;

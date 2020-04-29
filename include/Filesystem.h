@@ -51,7 +51,7 @@ public:
     bool createFile(string path, int size = 0);
 
     // Including directory.
-    bool deleteFile(const string &path);
+    bool deleteFile(string path);
 
     bool createDir(string path);
 
@@ -59,13 +59,13 @@ public:
 
     string getWorkingDir();
 
-    bool copyFile(const string &sourceFilePath, const string &targetFilePath);
+    bool copyFile(string sourceFilePath, string targetFilePath);
 
-    bool list(string &path);
+    bool list(string path);
 
-    bool showFileStatus(const string &path);
+    bool showFileStatus(string path);
 
-    bool printFile(const string &path);
+    bool printFile(string path);
 
 private:
     string workingDir;
