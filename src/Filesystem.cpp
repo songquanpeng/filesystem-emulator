@@ -68,6 +68,13 @@ void Filesystem::summary() {
 
 bool Filesystem::deleteFile(string path) {
     path = fullPath(path);
+    if(path == "/") {
+        cerr << "rm: permission denied" << endl;
+        return false;
+    } else if (path == workingDir) {
+        cerr << "rm: cannot delete working dir" << endl;
+        return false;
+    }
     if (!exist(path)) {
         cerr << "rm: cannot remove '" << path << "': No such file or directory" << endl;
         return false;

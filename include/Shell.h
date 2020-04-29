@@ -41,15 +41,27 @@ bool execute(Filesystem &fs, const string &command) {
         fs.copyFile(tokens[1], tokens[2]);
     } else if (tokens[0] == "rm" || tokens[0] == "deleteFile" ||
                tokens[0] == "rmdir" || tokens[0] == "deleteDir") {
-        fs.deleteFile(tokens[1]);
+        if(!tokens[1].empty()) {
+            fs.deleteFile(tokens[1]);
+        } else {
+            cerr << "rm: missing file operand" << endl;
+        }
     } else if (tokens[0] == "mkdir" || tokens[0] == "createDir") {
-        fs.createDir(tokens[1]);
+        if(!tokens[1].empty()) {
+            fs.createDir(tokens[1]);
+        } else {
+            cerr << "mkdir: missing file operand" << endl;
+        }
     } else if (tokens[0] == "touch" || tokens[0] == "createFile") {
-        int size = 0;
-        try {
-            size = stoi(tokens[2]);
-        } catch (const exception& e){}
-        fs.createFile(tokens[1], size * 1024);
+        if(!tokens[1].empty()){
+            int size = 0;
+            try {
+                size = stoi(tokens[2]);
+            } catch (const exception& e){}
+            fs.createFile(tokens[1], size * 1024);
+        } else {
+            cerr << "touch: missing file operand" << endl;
+        }
     } else if (tokens[0] == "ls" || tokens[0] == "dir") {
         fs.list(tokens[1]);
     } else if (tokens[0] == "cd" || tokens[0] == "changeDir") {
@@ -63,7 +75,11 @@ bool execute(Filesystem &fs, const string &command) {
     } else if (tokens[0] == "cat") {
         fs.printFile(tokens[1]);
     } else if (tokens[0] == "stat") {
-        fs.showFileStatus(tokens[1]);
+        if(!tokens[1].empty()) {
+            fs.showFileStatus(tokens[1]);
+        } else {
+            cerr << "mkdir: missing file operand" << endl;
+        }
     } else if (tokens[0] == "help") {
         cout << help() << endl;
     } else if (tokens[0] == "exit") {

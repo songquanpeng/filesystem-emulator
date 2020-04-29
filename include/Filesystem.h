@@ -102,8 +102,6 @@ private:
 
     bool createFile(unsigned int &inodeNum, unsigned int size = 0);
 
-    bool writeFile(unsigned int &inodeNum, char *content);
-
     // Revoke inode and free its blocks.
     bool revokeInode(unsigned int inodeNum);
 

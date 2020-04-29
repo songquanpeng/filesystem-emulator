@@ -34,4 +34,4 @@
 - [x] Able to copy file.
 
 ## Bugs
-- [ ] When create file with block size 11~16, the program will crash.
+- [ ] When create file with block size 11~16, the program will crash. (On some kits)
