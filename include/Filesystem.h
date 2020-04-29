@@ -75,7 +75,7 @@ private:
 
     void initialize();
 
-    unsigned int inodeNumber(const string &path);
+    unsigned int inodeNumber(string path);
 
     // Search target file or folder in given dir.
     unsigned int inodeNumber(const string &name, unsigned int dirInodeNumber);
@@ -101,6 +101,8 @@ private:
     bool createDir(unsigned int &inodeNum);
 
     bool createFile(unsigned int &inodeNum, unsigned int size = 0);
+
+    bool writeFile(unsigned int &inodeNum, char *content);
 
     // Revoke inode and free its blocks.
     bool revokeInode(unsigned int inodeNum);

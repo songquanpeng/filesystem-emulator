@@ -7,6 +7,7 @@
 #include <cstring>
 #include <iomanip>
 #include <algorithm>
+#include <utility>
 
 using namespace std;
 
@@ -229,14 +230,25 @@ bool Filesystem::list(string path) {
 }
 
 bool Filesystem::copyFile(string sourceFilePath, string targetFilePath) {
-
-    return false;
+    unsigned srcInodeNum = inodeNumber(std::move(sourceFilePath));
+    Inode *srcInode = readInode(srcInodeNum);
+    createFile(targetFilePath, srcInode->size);
+    unsigned dstInodeNum = inodeNumber(std::move(targetFilePath));
+    Inode *dstInode = readInode(dstInodeNum);
+    auto srcAddresses = blockAddress(srcInode);
+    auto dstAddresses = blockAddress(dstInode);
+    for (int i = 0; i < srcAddresses.size(); ++i) {
+        char *realSrcAddress = readBlock(srcAddresses[i]);
+        char *realDstAddress = readBlock(dstAddresses[i]);
+        memcpy(realDstAddress, realSrcAddress, BLOCK_SIZE);
+    }
+    return true;
 }
 
 bool Filesystem::printFile(string path) {
-    unsigned fileInodeNum = inodeNumber(path);
+    unsigned fileInodeNum = inodeNumber(std::move(path));
     Inode *inode = readInode(fileInodeNum);
-    char *buffer = new char[inode->size]; // TODO: cat file
+    char *buffer = new char[inode->size];
     auto addresses = blockAddress(inode);
     char *dstAddress = buffer;
     for (auto address : addresses) {
@@ -256,7 +268,8 @@ bool Filesystem::printFile(string path) {
     return true;
 }
 
-unsigned int Filesystem::inodeNumber(const string &path) {
+unsigned int Filesystem::inodeNumber(string path) {
+    path = fullPath(path);
     auto names = parsePath(path);
     unsigned int targetInodeNumber = 0;
     for (const string &name : names) {
@@ -386,6 +399,7 @@ vector<string> Filesystem::splitPath(const string &path) {
     } else {
         names.push_back(path.substr(splitIndex));
     }
+    if (names[0].empty()) names[0] = "/";
     return names;
 }
 

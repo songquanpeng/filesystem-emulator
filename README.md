@@ -31,7 +31,7 @@
 - [ ] Support "." and "..".
 - [x] When creating file, fill it with random string.
 - [ ] When deleting directory, recursively delete all content in it.
-- [ ] Able to copy file.
+- [x] Able to copy file.
 
 ## Bugs
 - [ ] When create file with block size 11~16, the program will crash.
