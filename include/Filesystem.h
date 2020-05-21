@@ -61,6 +61,8 @@ public:
 
     bool copyFile(string sourceFilePath, string targetFilePath);
 
+    bool moveFile(const string& sourceFilePath, string targetFilePath);
+
     bool list(string path);
 
     bool showFileStatus(string path);

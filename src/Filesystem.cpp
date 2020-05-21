@@ -252,6 +252,11 @@ bool Filesystem::copyFile(string sourceFilePath, string targetFilePath) {
     return true;
 }
 
+bool Filesystem::moveFile(const string& sourceFilePath, string targetFilePath) {
+    copyFile(sourceFilePath, std::move(targetFilePath));
+    deleteFile(sourceFilePath);
+}
+
 bool Filesystem::printFile(string path) {
     unsigned fileInodeNum = inodeNumber(std::move(path));
     Inode *inode = readInode(fileInodeNum);

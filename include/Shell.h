@@ -20,11 +20,17 @@ string introduction() {
 }
 
 string help() {
-    return "GNU bash, version 4.3.48(1)-release (x86_64-pc-linux-gnu)\n"
-           "These shell commands are defined internally.  Type `help' to see this list.\n"
-           "Type `help name' to find out more about the function `name'.\n"
-           "Use `info bash' to find out more about the shell in general.\n"
-           "Use `man -k' or `info' to find out more about commands not in this list.";
+    return "rm\tdelete file or directory\n"
+           "mkdir\tcreate directory\n"
+           "touch\tcreate file\n"
+           "ls\tlist files and directories of the given directory\n"
+           "cd\tchange working directory\n"
+           "mv\tmove file\n"
+           "df\tprint summary\n"
+           "cat\tprint file content\n"
+           "stat\tprint file info\n"
+           "help\tprint this help message\n"
+           "exit\texit the shell";
 }
 
 string prompt(const string &workingDir) {
@@ -39,25 +45,27 @@ bool execute(Filesystem &fs, const string &command) {
     tokens.emplace_back("");
     if (tokens[0] == "cp") {
         fs.copyFile(tokens[1], tokens[2]);
+    } else if (tokens[0] == "mv") {
+        fs.moveFile(tokens[1], tokens[2]);
     } else if (tokens[0] == "rm" || tokens[0] == "deleteFile" ||
                tokens[0] == "rmdir" || tokens[0] == "deleteDir") {
-        if(!tokens[1].empty()) {
+        if (!tokens[1].empty()) {
             fs.deleteFile(tokens[1]);
         } else {
             cerr << "rm: missing file operand" << endl;
         }
     } else if (tokens[0] == "mkdir" || tokens[0] == "createDir") {
-        if(!tokens[1].empty()) {
+        if (!tokens[1].empty()) {
             fs.createDir(tokens[1]);
         } else {
             cerr << "mkdir: missing file operand" << endl;
         }
     } else if (tokens[0] == "touch" || tokens[0] == "createFile") {
-        if(!tokens[1].empty()){
+        if (!tokens[1].empty()) {
             int size = 0;
             try {
                 size = stoi(tokens[2]);
-            } catch (const exception& e){}
+            } catch (const exception &e) {}
             fs.createFile(tokens[1], size * 1024);
         } else {
             cerr << "touch: missing file operand" << endl;
@@ -75,10 +83,10 @@ bool execute(Filesystem &fs, const string &command) {
     } else if (tokens[0] == "cat") {
         fs.printFile(tokens[1]);
     } else if (tokens[0] == "stat") {
-        if(!tokens[1].empty()) {
+        if (!tokens[1].empty()) {
             fs.showFileStatus(tokens[1]);
         } else {
-            cerr << "mkdir: missing file operand" << endl;
+            cerr << "stat: missing file operand" << endl;
         }
     } else if (tokens[0] == "help") {
         cout << help() << endl;
