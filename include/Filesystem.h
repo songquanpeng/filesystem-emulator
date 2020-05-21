@@ -92,7 +92,7 @@ private:
 
     void writeBlock(unsigned int address, char *buffer);
 
-    void fillBlock(unsigned int address);
+    void fillBlock(unsigned int address, bool empty= false);
 
     char *readBlock(unsigned int address);
 

@@ -7,7 +7,7 @@
 - [x] Able to delete file.
 - [x] Able to list subdirs and files in target directory.
 - [x] Able to show file content.
-- [ ] Able to edit file.
+- [x] Able to edit file on creating.
 - [x] Able to show directory's attributes.
 - [ ] Support relative path.
 - [x] Able to change working directory.

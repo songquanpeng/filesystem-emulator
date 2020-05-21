@@ -178,7 +178,7 @@ bool Filesystem::createFile(unsigned int &inodeNum, unsigned int size, bool edit
         if (blockNum * BLOCK_SIZE < size) blockNum++;
         for (int i = 0; i < min(blockNum, DIRECT_ADDRESS_NUM); ++i) {
             assignBlock(inode.address[i]);
-            if (!edit) fillBlock(inode.address[i]);
+            fillBlock(inode.address[i], edit);
             if (i == 0 && edit) {
                 editFile(inode.address[i]);
             }
@@ -188,7 +188,7 @@ bool Filesystem::createFile(unsigned int &inodeNum, unsigned int size, bool edit
             auto *blockAddresses = new unsigned[blockNum - DIRECT_ADDRESS_NUM];
             for (int i = 0; i < blockNum - DIRECT_ADDRESS_NUM; ++i) {
                 assignBlock(blockAddresses[i]);
-                if (!edit) fillBlock(blockAddresses[i]);
+                fillBlock(blockAddresses[i], edit);
             }
             // Write the extra block address into the last direct block
             writeBlock(inode.address[DIRECT_ADDRESS_NUM], reinterpret_cast<char *>(blockAddresses));
@@ -209,7 +209,8 @@ void Filesystem::editFile(unsigned int blockAddress) {
     }
     file += '\0';
     char *dis = memory + BLOCK_START_POS + blockAddress * BLOCK_SIZE;
-    memcpy(dis, file.c_str(), min(BLOCK_SIZE, (int)file.size()));
+    int size = min(BLOCK_SIZE, (int)file.size());
+    memcpy(dis, file.c_str(), size);
 }
 
 bool Filesystem::changeWorkingDir(string path) {
@@ -356,12 +357,16 @@ void Filesystem::writeBlock(unsigned int address, char *buffer) {
     memcpy(dis, buffer, BLOCK_SIZE);
 }
 
-void Filesystem::fillBlock(unsigned int address) {
+void Filesystem::fillBlock(unsigned int address, bool empty) {
     const int num = BLOCK_SIZE / sizeof(char);
     char buffer[num];
-    srand(time(nullptr));
-    for (int i = 0; i < num; i++) {
-        buffer[i] = 'a' + rand() % 26;
+    if(empty) {
+        memset(buffer, 0, num);
+    } else{
+        srand(time(nullptr));
+        for (int i = 0; i < num; i++) {
+            buffer[i] = 'a' + rand() % 26;
+        }
     }
     writeBlock(address, buffer);
 }
