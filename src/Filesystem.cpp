@@ -272,6 +272,7 @@ bool Filesystem::copyFile(string sourceFilePath, string targetFilePath) {
 bool Filesystem::moveFile(const string &sourceFilePath, string targetFilePath) {
     copyFile(sourceFilePath, std::move(targetFilePath));
     deleteFile(sourceFilePath);
+    return true;
 }
 
 bool Filesystem::printFile(string path) {
