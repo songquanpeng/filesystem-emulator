@@ -23,6 +23,7 @@ string help() {
     return "rm\tdelete file or directory\n"
            "mkdir\tcreate directory\n"
            "touch\tcreate file\n"
+           "vim\tcreate and edit file\n"
            "ls\tlist files and directories of the given directory\n"
            "cd\tchange working directory\n"
            "mv\tmove file\n"
@@ -69,6 +70,16 @@ bool execute(Filesystem &fs, const string &command) {
             fs.createFile(tokens[1], size * 1024);
         } else {
             cerr << "touch: missing file operand" << endl;
+        }
+    } else if (tokens[0] == "vim" || tokens[0] == "vi") {
+        if (!tokens[1].empty()) {
+            int size = 0;
+            try {
+                size = stoi(tokens[2]);
+            } catch (const exception &e) {}
+            fs.createFile(tokens[1], size * 1024, true);
+        } else {
+            cerr << "vim: missing file operand" << endl;
         }
     } else if (tokens[0] == "ls" || tokens[0] == "dir") {
         fs.list(tokens[1]);

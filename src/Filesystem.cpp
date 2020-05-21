@@ -68,7 +68,7 @@ void Filesystem::summary() {
 
 bool Filesystem::deleteFile(string path) {
     path = fullPath(path);
-    if(path == "/") {
+    if (path == "/") {
         cerr << "rm: permission denied" << endl;
         return false;
     } else if (path == workingDir) {
@@ -143,7 +143,7 @@ bool Filesystem::createDir(unsigned int &inodeNum) {
     return false;
 }
 
-bool Filesystem::createFile(string path, int size) {
+bool Filesystem::createFile(string path, int size, bool edit) {
     if (size < 0) size = 0;
     unsigned restSpace = (BLOCK_NUM - bitmap->count()) * BLOCK_SIZE;
     if (size > restSpace) {
@@ -164,13 +164,13 @@ bool Filesystem::createFile(string path, int size) {
     unsigned int parentDirInodeNum = inodeNumber(names[0]);
     string fileName = names[1];
     unsigned int inodeNum;
-    if (createFile(inodeNum, size)) {
+    if (createFile(inodeNum, size, edit)) {
         return addDirItem(parentDirInodeNum, inodeNum, fileName);
     }
     return false;
 }
 
-bool Filesystem::createFile(unsigned int &inodeNum, unsigned int size) {
+bool Filesystem::createFile(unsigned int &inodeNum, unsigned int size, bool edit) {
     if (assignInode(inodeNum)) {
         Inode inode = createInode(false);
         inode.size = size;
@@ -178,22 +178,38 @@ bool Filesystem::createFile(unsigned int &inodeNum, unsigned int size) {
         if (blockNum * BLOCK_SIZE < size) blockNum++;
         for (int i = 0; i < min(blockNum, DIRECT_ADDRESS_NUM); ++i) {
             assignBlock(inode.address[i]);
-            fillBlock(inode.address[i]);
+            if (!edit) fillBlock(inode.address[i]);
+            if (i == 0 && edit) {
+                editFile(inode.address[i]);
+            }
         }
         if (blockNum > DIRECT_ADDRESS_NUM) {
             assignBlock(inode.address[DIRECT_ADDRESS_NUM]);
-            auto *buffer = new unsigned[blockNum - DIRECT_ADDRESS_NUM];
+            auto *blockAddresses = new unsigned[blockNum - DIRECT_ADDRESS_NUM];
             for (int i = 0; i < blockNum - DIRECT_ADDRESS_NUM; ++i) {
-                assignBlock(buffer[i]);
-                fillBlock(buffer[i]);
+                assignBlock(blockAddresses[i]);
+                if (!edit) fillBlock(blockAddresses[i]);
             }
-            writeBlock(inode.address[DIRECT_ADDRESS_NUM], reinterpret_cast<char *>(buffer));
-            delete[] buffer;
+            // Write the extra block address into the last direct block
+            writeBlock(inode.address[DIRECT_ADDRESS_NUM], reinterpret_cast<char *>(blockAddresses));
+            delete[] blockAddresses;
         }
         writeInode(inodeNum, &inode);
         return true;
     }
     return false;
+}
+
+void Filesystem::editFile(unsigned int blockAddress) {
+    string file;
+    string row;
+    while (getline(cin, row)) {
+        if (row == ":wq") break;
+        file += row + "\n";
+    }
+    file += '\0';
+    char *dis = memory + BLOCK_START_POS + blockAddress * BLOCK_SIZE;
+    memcpy(dis, file.c_str(), min(BLOCK_SIZE, (int)file.size()));
 }
 
 bool Filesystem::changeWorkingDir(string path) {
@@ -252,7 +268,7 @@ bool Filesystem::copyFile(string sourceFilePath, string targetFilePath) {
     return true;
 }
 
-bool Filesystem::moveFile(const string& sourceFilePath, string targetFilePath) {
+bool Filesystem::moveFile(const string &sourceFilePath, string targetFilePath) {
     copyFile(sourceFilePath, std::move(targetFilePath));
     deleteFile(sourceFilePath);
 }

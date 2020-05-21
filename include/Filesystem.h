@@ -48,7 +48,7 @@ public:
     bool exit();
 
     // The unit of size is byte here.
-    bool createFile(string path, int size = 0);
+    bool createFile(string path, int size = 0, bool edit= false);
 
     // Including directory.
     bool deleteFile(string path);
@@ -102,7 +102,7 @@ private:
 
     bool createDir(unsigned int &inodeNum);
 
-    bool createFile(unsigned int &inodeNum, unsigned int size = 0);
+    bool createFile(unsigned int &inodeNum, unsigned int size = 0, bool edit= false);
 
     // Revoke inode and free its blocks.
     bool revokeInode(unsigned int inodeNum);
@@ -120,6 +120,8 @@ private:
     vector<unsigned> blockAddress(Inode *inode);
 
     bool addDirItem(unsigned parentDirInodeNum, unsigned fileInodeNum, const string &name);
+
+    void editFile(unsigned int blockAddress);
 };
 
 #endif //FILE_SYSTEM_EMULATOR_FILESYSTEM_H
